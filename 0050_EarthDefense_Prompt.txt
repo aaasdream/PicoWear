@@ -1,0 +1,112 @@
+Pico_Wear.py
+PicoWear 類別于控制 Pico Wear 硬件，主要函数说明如下：
+__init__(): 初始化 PicoWear 对象，设置定时器、LED、显示屏、MPU6050 传感器、Wi-Fi、RTC 和 MQTT 客户端。
+init_hardware(button_callback=None): 初始化所有硬件组件，包括 OLED 显示屏、MPU6050 倾斜传感器、Wi-Fi、RTC 和 LED。可选参数 button_callback 用于设置按钮按下时的回调函数。
+detect_button(timer, callback=None): 检测按钮状态，若检测到按钮被按下，调用指定的回调函数。
+register_button_callback(callback): 注册按钮Click的回调函数，替换之前的定时器回调
+line_notify_message(token, msg): 使用 LINE Notify API 发送消息。参数 token 为授权令牌，msg 为发送的消息内容。
+mqtt_connect(mqtt_broker): 连接到指定的 MQTT 服务器。参数 mqtt_broker 为服务器地址，成功连接后返回 MQTT 客户端对象。
+通过使用 PicoWear 类，您可以：
+初始化并控制 Pico Wear 的硬件组件。
+注册并处理按钮按下事件。
+发送消息到 LINE Notify 服务。
+连接到 MQTT 服务器进行消息通信。
+PicoWear示例：
+from Pico_Wear import PicoWear  # 引入 PicoWear 類別
+# 创建 PicoWear 对象
+pico = ()
+# 注册按钮回调函数
+def on_button_click():
+    print("Button Click")
+pico.register_button_callback(on_button_click)#PicoWear只有一個按鈕
+
+PicoWear.display使用說明
+這是Micropython中一個OLED的驅動
+他的大小為128x128的單色螢幕
+基本繪圖:
+繼承framebuf.FrameBuffer 除了原本framebuf.FrameBuffer的函數還包含如下
+畫點: display.pixel(x, y, color)
+畫線: display.line(x1, y1, x2, y2, color)
+畫矩形: display.draw_rectangle(x, y, width, height, color)
+填充矩形: display.fill_rectangle(x, y, width, height, color)
+畫圓: display.draw_circle(x, y, radius, color)
+填充圓: display.fill_circle(x, y, radius, color)
+畫三角形: display.draw_triangle(x0, y0, x1, y1, x2, y2, color)
+填充三角形: display.fill_triangle(x0, y0, x1, y1, x2, y2, color)
+顯示文字: display.text("Hello", x, y, color)
+讀取圖片：Image_fb = display.read_bmp_mono('圖片路徑名稱')
+繪製位圖: display.drawBitmap(self,Image_fb, x, y )
+更新顯示: display.show()
+清除顯示: display.fill(0) 然後 display.show()
+
+注意:
+顏色使用1表示點亮，0表示熄滅
+座標系統從左上角(0,0)開始
+該物件已經使用Double Buffer調用display.show()將緩衝顯示出來
+把畫面填充完畢再一次性顯示可以去除閃爍問題
+
+self.mpu使用說明
+使用 MPU6050 陀螺儀和加速度計感測器設計的。
+它可以進行平躺Roll Pitch ，站立時傾斜角度的計算，並透過Mahony濾波算法來實現更準確的姿態估計。
+務必每秒100計算才能取得穩定角度請主程式分開自己單獨一個Timer呼叫計算
+mpu.update_mahony()  #如果要取得roll pitch
+或是
+mpu.calculate_tilt_angles() #如果要Get_tilt_angles
+該類別已使用雙緩衝去除角度計算競爭
+注意
+Timer中斷頻率高請在主程式判斷KeyboardInterrupt並關閉所有Timer
+主要方法
+__init__(self, i2c, addr=0x68)
+    初始化 MPU6050 類別。
+    參數 i2c 是必須的，它是一個已配置的 I2C 對象。
+    參數 addr 是設備的 I2C 地址，默認為 0x68。
+calibrate(self, samples=100)
+    校準 MPU6050 roll pitch，減少讀數誤差。
+update_mahony(self)
+    計算mpu6050平躺的。更新姿態估計，使用 Mahony 濾波算法。
+    這個方法會自動根據加速度計和陀螺儀的讀數更新四元數，從而得到較準確的姿態角。
+    每秒需要進行100運算,運算結果使用get_angles() 取得
+get_angles(self)
+    獲取計算後的歐拉角（Roll, Pitch, Yaw）。角度以度（°）為單位。
+read_accel(self)
+    讀取加速度數據，從 MPU6050 的加速度計傳感器獲取數據。返回的加速度數據經過轉換為 g 單位（重力加速度的倍數）。
+read_gyro(self)
+    讀取陀螺儀數據，從 MPU6050 的陀螺儀傳感器獲取數據。返回的陀螺儀數據經過轉換為度每秒（deg/s），描述角速度。
+read_accel_raw(self)
+    直接讀取原始加速度數據。
+calculate_tilt_angles_with_filter(self)
+    計算mpu6050站立之後的傾斜角度，使用互補濾波器來平滑角度變化，以應對快速動態變化。
+    此方法返回的角度以度（°）為單位，並會將角度維持在 -180° 到 180° 的範圍內。
+Get_tilt_angles(self)
+    取得Get_tilt_angles計算後的角度
+calibrate_tilt(self, num_samples=100)
+    校準站立時傾斜角度，主要用於設置加速度計的偏移值。
+
+
+
+    
+
+幫我撰寫
+製作一個地球保衛的遊戲
+螢幕中央有一個球, 玩家是一個方塊盾
+用Timer計算mpu
+抓取mpu的角度，
+使用Roll角度-15度～15度ㄧ對應方塊的Ｘ軸座標
+使用Pitch角度-15度～15度對應方塊的Y軸座標
+四面八方會有隕石向地球飛過來,左上角顯示分數，
+玩家的方塊盾可以抵擋隕石 每擋一個隕石10分
+如果隕石碰到地球遊戲Game Over
+顯示Game Over與分數
+點擊按鈕重新開始新的遊戲
+請先一步一步分析再進行程式撰寫
+
+
+
+
+
+
+寫完之後再說
+
+檢查看看程式有沒有問題
+如果有修改給出完整的程式碼
+

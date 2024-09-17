@@ -1,0 +1,131 @@
+這是一台raspberry pi pico w
+連結一個oled 128 x128 與 一個mpu6050
+使用Pico_Ware_Init程式碼初始化整個裝置
+並回傳初始化完成的display(oled畫圖物件)與mpu(mpu6050)
+
+import sh1107
+from Mpu6050_mahony import MPU6050
+import Pico_Ware_tool
+import rp2
+display , mpu = Pico_Ware_tool.Pico_Ware_Init()
+
+有一個按鈕需要再回圈中polling檢查
+def CalButton():
+	#按鈕按一下進行校正
+	button = rp2.bootsel_button()
+	if button == 1:
+		# 只按一下
+		while button == 1:
+			button = rp2.bootsel_button()
+		time.sleep(0.5)#等待手的抖動停止才校正
+		按下按鈕後的程式碼
+
+
+
+
+
+Mpu6050_mahony.py
+這個 MPU6050 類別是為了在 MicroPython 環境中使用 MPU6050 陀螺儀和加速度計感測器設計的。
+它可以進行平躺Roll Pitch ，站立時傾斜角度的計算，並透過Mahony濾波算法來實現更準確的姿態估計。
+使用範例
+from machine import Pin, I2C, RTC,Timer
+from Mpu6050_mahony import MPU6050
+from machine import mem32
+
+# mpu6050 的電源
+PAD_CONTROL_REGISTER = 0x4001c05c #讓PIN電流提升
+mem32[PAD_CONTROL_REGISTER] = mem32[PAD_CONTROL_REGISTER] | 0b0110000
+# GP22 為mpu6050的電源輸出，務必設置輸出 1 才能啟動mpu6050
+pin22 = Pin(22, Pin.OUT, value=0)
+time.sleep(1)
+pin22 = Pin(22, Pin.OUT, value=1)
+time.sleep(1)
+# 初始化I2C
+i2c0 = I2C(0, scl=Pin(21), sda=Pin(20), freq=400000)
+# 初始化MPU6050
+mpu = MPU6050(i2c0)
+
+務必每秒一百次計算mpu.update_mahony()才能取得穩定角度
+mpu.calculate_tilt_angles()需要時才取用
+
+主要方法
+__init__(self, i2c, addr=0x68)
+    初始化 MPU6050 類別。
+    參數 i2c 是必須的，它是一個已配置的 I2C 對象。
+    參數 addr 是設備的 I2C 地址，默認為 0x68。
+calibrate(self, samples=100)
+    校準 MPU6050，減少讀數誤差。這個方法會收集多個樣本來計算平均偏差。
+update_mahony(self)
+    計算mpu6050平躺的。更新姿態估計，使用 Mahony 濾波算法。
+    這個方法會自動根據加速度計和陀螺儀的讀數更新四元數，從而得到較準確的姿態角。
+    每秒需要進行100運算,運算結果使用get_angles() 取得
+get_angles(self)
+    獲取計算後的歐拉角（Roll, Pitch, Yaw）。角度以度（°）為單位。
+read_accel(self)
+    讀取加速度數據，從 MPU6050 的加速度計傳感器獲取數據。返回的加速度數據經過轉換為 g 單位（重力加速度的倍數）。
+read_gyro(self)
+    讀取陀螺儀數據，從 MPU6050 的陀螺儀傳感器獲取數據。返回的陀螺儀數據經過轉換為度每秒（deg/s），描述角速度。
+read_accel_raw(self)
+    直接讀取原始加速度數據。
+calculate_tilt_angles_with_filter(self)
+    計算mpu6050站立之後的傾斜角度，使用互補濾波器來平滑角度變化，以應對快速動態變化。
+    此方法返回的角度以度（°）為單位，並會將角度維持在 -180° 到 180° 的範圍內。
+Get_tilt_angles(self)
+    取得Get_tilt_angles計算後的角度
+calibrate_tilt(self, num_samples=100)
+    校準站立時傾斜角度，主要用於設置加速度計的偏移值。
+'''
+
+'''
+sh1107.py
+使用這個Class給予LLM參考:
+
+複製
+from machine import I2C, Pin
+import sh1107
+from machine import mem32
+
+# OLED 的電源
+PAD_CONTROL_REGISTER = 0x4001c024
+mem32[PAD_CONTROL_REGISTER] = mem32[PAD_CONTROL_REGISTER] | 0b0110000
+# 設定 GP9 為輸出，並設置輸出(GND), GP8 為輸出，並設置輸出 1
+pin9 = Pin(9, Pin.OUT, value=0)
+pin8 = Pin(8, Pin.OUT, value=0)
+time.sleep(1)
+pin8 = Pin(8, Pin.OUT, value=1) 
+
+i2c1 = I2C(1, scl=Pin(7), sda=Pin(6), freq=400000)
+display = sh1107.SH1107_I2C(128, 128, i2c1)
+基本繪圖:
+畫點: oled.pixel(x, y, color)
+畫線: oled.line(x1, y1, x2, y2, color)
+畫矩形: oled.draw_rectangle(x, y, width, height, color)
+填充矩形: oled.fill_rectangle(x, y, width, height, color)
+畫圓: oled.draw_circle(x, y, radius, color)
+填充圓: oled.fill_circle(x, y, radius, color)
+畫三角形: oled.draw_triangle(x0, y0, x1, y1, x2, y2, color)
+填充三角形: oled.fill_triangle(x0, y0, x1, y1, x2, y2, color)
+文字顯示:
+顯示文字: oled.text("Hello", x, y, color)
+位圖顯示:
+繪製位圖: oled.drawBitmap(x, y, bitmap, width, height)
+顯示控制:
+更新顯示: oled.show()
+清除顯示: oled.fill(0) 然後 oled.show()
+調整對比度: oled.contrast(contrast_value)
+屏幕翻轉: oled.rotate(flag)
+反轉顯示: oled.invert(invert_flag)
+電源管理:
+開啟顯示: oled.poweron()
+關閉顯示: oled.poweroff()
+睡眠模式: oled.sleep(sleep_flag)
+注意:
+顏色使用1表示點亮，0表示熄滅
+座標系統從左上角(0,0)開始
+在進行任何繪圖操作後，需要調用oled.show()來更新顯示
+
+
+參考以上說明請幫我建立
+一個打磚塊的遊戲，使用Roll的角度當作控制玩家的Bar，控制角度為-20度~20度
+球落地沒有接到遊戲顯示GAME OVER 所有磚塊打完顯示YOU WIN
+按下按鈕重新開始遊戲

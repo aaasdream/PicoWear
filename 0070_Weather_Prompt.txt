@@ -1,0 +1,102 @@
+Pico_Wear.py
+PicoWear 類別于控制 Pico Wear 硬件，主要函数说明如下：
+__init__(): 初始化 PicoWear 对象，设置定时器、LED、显示屏、MPU6050 传感器、Wi-Fi、RTC 和 MQTT 客户端。
+detect_button(timer, callback=None): 检测按钮状态，若检测到按钮被按下，调用指定的回调函数。
+register_button_callback(callback): 注册按钮Click的回调函数,callback 是一個沒有參數的函數
+line_notify_message(token, msg): 使用 LINE Notify API 发送消息。参数 token 为授权令牌，msg 为发送的消息内容。
+mqtt_connect(mqtt_broker): 连接到指定的 MQTT 服务器。参数 mqtt_broker 为服务器地址，成功连接后返回 MQTT 客户端对象。
+通过使用 PicoWear 类，您可以：
+初始化并控制 Pico Wear 的硬件组件。
+注册并处理按钮按下事件。
+发送消息到 LINE Notify 服务。
+连接到 MQTT 服务器进行消息通信。
+PicoWear示例：
+from Pico_Wear import PicoWear  # 引入 PicoWear 類別
+# 创建 PicoWear 对象
+pico = ()
+# 注册按钮回调函数
+def on_button_click():
+    print("Button Click")
+pico.register_button_callback(on_button_click)#PicoWear只有一個按鈕
+Wifi屬性：
+    pico_wear.wifi.connect(SSID, PASSWORD)
+    pico_wear.wifi.isconnected()
+    ip_address = pico_wear.wifi.ifconfig()[0]  # 獲取 IP 地址
+    
+PicoWear.display使用說明
+這是Micropython中一個OLED的驅動
+他的大小為128x128的單色螢幕
+基本繪圖:
+繼承framebuf.FrameBuffer 除了原本framebuf.FrameBuffer的函數還包含如下
+畫點: display.pixel(x, y, color)
+畫線: display.line(x1, y1, x2, y2, color)
+畫矩形: display.draw_rectangle(x, y, width, height, color)
+填充矩形: display.fill_rectangle(x, y, width, height, color)
+畫圓: display.draw_circle(x, y, radius, color)
+填充圓: display.fill_circle(x, y, radius, color)
+畫三角形: display.draw_triangle(x0, y0, x1, y1, x2, y2, color)
+填充三角形: display.fill_triangle(x0, y0, x1, y1, x2, y2, color)
+顯示文字: display.text("Hello", x, y, color)
+讀取圖片：Image_fb = display.read_bmp_mono('圖片路徑名稱')
+繪製位圖: display.drawBitmap(self,Image_fb, x, y )
+更新顯示: display.show()
+清除顯示: display.fill(0) 然後 display.show()
+
+注意:
+顏色使用1表示點亮，0表示熄滅
+座標系統從左上角(0,0)開始
+該物件已經使用Double Buffer調用display.show()將緩衝顯示出來
+把畫面填充完畢再一次性顯示可以去除閃爍問題
+
+  
+
+    
+   
+
+幫我撰寫
+我的wifi SSID:HINET1 密碼:12345678
+在螢幕顯示wifi連線狀態
+連線成功之後螢幕顯示IP,使用NTC校正時間時區為+8,
+注意
+Oled只能顯示英文注意
+micropython 沒有timezone指令
+設定時間可能會抓取失敗請重式3次
+
+在畫面上顯示第一行年月日 第二行時分秒,時間每秒更新
+請先一步一步分析再進行程式撰寫
+
+
+
+然後再幫我加入
+使用openweathermap取得現在的天氣
+我的位置在台灣 @23.33152,121.3091451
+我的api key是
+7f627de3cadbfddef4e401844d78dcf2
+螢幕加入顯示現在的第三行T:溫度,第四行H:濕度和現在的 第三行中間顯示現在天氣每小時更新一次
+請先一步一步分析再進行程式撰寫
+請不要省略程式碼請給出完整的程式
+
+
+
+
+然後再幫我加入抓取未來五天"中午12點"的天氣，並顯示出來
+顯示在第六行之後
+請先一步一步分析再進行程式撰寫
+請不要省略程式碼請給出完整的程式
+
+
+
+然後在[WeatherImage]資料夾裡面有天氣的圖示只有白天的圖示
+檔名對應openweathermap的天氣編號01d.bmp 02d.bmp ... 13d.bmp 50d.bmp
+如果天氣圖示為01n請把他轉為01d 
+圖檔大小為32x32 把今天天氣換成圖示
+未來五天
+因為寬度關係顯示四天的天氣與溫度圖示
+
+
+
+
+
+
+
+
