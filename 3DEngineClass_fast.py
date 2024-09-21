@@ -4,14 +4,13 @@ from machine import Pin, I2C, RTC,Timer
 import utime as time
 import math
 import gc
-import sh1107
 from Mpu6050_mahony import MPU6050
 import micropython
 import rp2
 from machine import mem32
 import network
 import time
-import Pico_Wear
+from Pico_Wear import PicoWear
 
 
 class Camera:
@@ -270,11 +269,12 @@ def CalButton():
         time.sleep(0.5)
 
 def main():
-    display , mpu = Pico_Wear.Pico_Wear_Init()
+    # 主程序
+    pico = PicoWear()
     update_timer = TimeToDo(60)  # 60 FPS
     #====================PICO WARE Init End====================================
     camera = Camera(position=(0, 0, 2), rotation_z=0, fov=60, width=128, height=128, near=1, far=100)
-    renderer = Renderer(display, camera)
+    renderer = Renderer(pico.display, camera)
     MyModel = Model.create_from_obj('cloud.obj')
     #MyModel = Model.create_cube()
 
@@ -292,10 +292,10 @@ def main():
         # 更新位置和旋轉
         MyModel.rotation[1] = MyModel.rotation[1] + 5
         # 渲染畫面
-        display.fill(0)  # 清空顯示屏
-        display.text("FPS: {:.2f}".format(fps), 0, 0, 1)  # 顯示 FPS
+        pico.display.fill(0)  # 清空顯示屏
+        pico.display.text("FPS: {:.2f}".format(fps), 0, 0, 1)  # 顯示 FPS
         renderer.render(MyModel)
-        display.show()
+        pico.display.show()
         #CalButton()  # Check for calibration button
 
 

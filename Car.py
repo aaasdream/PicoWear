@@ -1,13 +1,13 @@
 import time
 import random
 from machine import Pin, I2C, mem32
-import sh1107
 from Mpu6050_mahony import MPU6050
 import rp2
-import Pico_Wear
+from Pico_Wear import PicoWear
 #====================PICO WARE Init====================================
 # 初始化
-display, mpu = Pico_Wear.Pico_Wear_Init()
+# 主程序
+pico = PicoWear()
 
 # 遊戲參數
 CAR_WIDTH = 20
@@ -31,7 +31,7 @@ class Car:
         self.x = max(0, min(SCREEN_WIDTH - CAR_WIDTH, self.x + move))
 
     def draw(self):
-        display.fill_rectangle(self.x, self.y, CAR_WIDTH, CAR_HEIGHT, 1)
+        pico.display.fill_rectangle(self.x, self.y, CAR_WIDTH, CAR_HEIGHT, 1)
 
 class Obstacle:
     def __init__(self):
@@ -43,7 +43,7 @@ class Obstacle:
         return self.y > SCREEN_HEIGHT
 
     def draw(self):
-        display.fill_rectangle(self.x, self.y, OBSTACLE_WIDTH, OBSTACLE_HEIGHT, 1)
+        pico.display.fill_rectangle(self.x, self.y, OBSTACLE_WIDTH, OBSTACLE_HEIGHT, 1)
 
 class RoadLanes:
     def __init__(self):
@@ -57,7 +57,7 @@ class RoadLanes:
         for x in self.lanes:
             y = self.y
             while y < SCREEN_HEIGHT:
-                display.fill_rectangle(x, y, LANE_WIDTH, LANE_GAP // 2, 1)
+                pico.display.fill_rectangle(x, y, LANE_WIDTH, LANE_GAP // 2, 1)
                 y += LANE_GAP
 
 def check_collision(car, obstacle):
@@ -67,9 +67,9 @@ def check_collision(car, obstacle):
             car.y + CAR_HEIGHT > obstacle.y)
 
 def game_over():
-    display.fill(0)
-    display.text("Game Over", 30, 60, 1)
-    display.show()
+    pico.display.fill(0)
+    pico.display.text("Game Over", 30, 60, 1)
+    pico.display.show()
     time.sleep(3)
 
 def main():
@@ -80,8 +80,8 @@ def main():
     game_speed = 0.05
 
     while True:
-        mpu.update_mahony()
-        roll, _, _ = mpu.get_angles()
+        pico.mpu.update_mahony()
+        roll, _, _ = pico.mpu.get_angles()
 
         car.move(roll)
         road_lanes.move()
@@ -89,7 +89,7 @@ def main():
         if random.random() < 0.05:
             obstacles.append(Obstacle())
 
-        display.fill(0)
+        pico.display.fill(0)
         road_lanes.draw()
         car.draw()
 
@@ -103,8 +103,8 @@ def main():
                     game_over()
                     return
 
-        display.text(f"Score: {score}", 0, 0, 1)
-        display.show()
+        pico.display.text(f"Score: {score}", 0, 0, 1)
+        pico.display.show()
         time.sleep(game_speed)
 
 if __name__ == "__main__":
