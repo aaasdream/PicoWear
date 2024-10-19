@@ -57,16 +57,16 @@ PicoWear.display (OLED) 的使用說明：
 該物件已經使用 Double Buffer 呼叫 display.show() 將緩衝顯示出來。
 把畫面填充完畢再一次性顯示可以去除閃爍問題。
 
-self.mpu使用說明
+PicoWear.mpu使用說明
+Mpu6050_mahony.py
 使用 MPU6050 陀螺儀和加速度計感測器設計的。
 它可以進行平躺Roll Pitch ，站立時傾斜角度的計算，並透過Mahony濾波算法來實現更準確的姿態估計。
-務必每秒100計算才能取得穩定角度請主程式分開自己單獨一個Timer呼叫計算需要引入from machine import Timer
+務必每秒100計算才能取得穩定角度,請單獨一個Timer呼叫計算
 mpu.update_mahony()  #如果要取得roll pitch
-或是
-mpu.calculate_tilt_angles() #如果要Get_tilt_angles
+mpu.calculate_tilt_angle() #如果要站立Get_tilt_angle
 該類別已使用雙緩衝去除角度計算競爭
 注意
-Timer中斷頻率高請在主程式判斷KeyboardInterrupt並關閉所有Timer
+Timer中斷頻率高,請在主程式判斷KeyboardInterrupt時使用for timer in timers: timer.deinit(),關閉所有Timer
 主要方法
 __init__(self, i2c, addr=0x68)
     初始化 MPU6050 類別。
@@ -86,30 +86,150 @@ read_gyro(self)
     讀取陀螺儀數據，從 MPU6050 的陀螺儀傳感器獲取數據。返回的陀螺儀數據經過轉換為度每秒（deg/s），描述角速度。
 read_accel_raw(self)
     直接讀取原始加速度數據。
-calculate_tilt_angles_with_filter(self)
+calculate_tilt_angle(self)
     計算mpu6050站立之後的傾斜角度，使用互補濾波器來平滑角度變化，以應對快速動態變化。
-    此方法返回的角度以度（°）為單位，並會將角度維持在 -180° 到 180° 的範圍內。
-Get_tilt_angles(self)
-    取得Get_tilt_angles計算後的角度
+    務必每秒100計算才能算出穩定角度。
+    只有計算要取出角度請使用Get_tilt_angle()
+Get_tilt_angle(self)
+    取得calculate_tilt_angles計算後的tilt角度
+    此方法返回tilt角度以(度)為單位，並會將角度維持在 -180° 到 180° 的範圍內。
 calibrate_tilt(self, num_samples=100)
     校準站立時傾斜角度，主要用於設置加速度計的偏移值。
 
-
-請幫我寫出:
-
+mpu與display合作時主程式架構
+timer = machine.Timer()
+timer.init(period=10, mode=machine.Timer.PERIODIC, callback=update_tilt)
+try:
+    while True:
+        angle = mpu 取得角度
+        update_display(angle)
+        utime.sleep(0.05)
+except KeyboardInterrupt:
+    timer.deinit()
+    print("程序已停止")
     
 
 
-製作一個地球保衛的遊戲
-螢幕中央有一個球, 玩家是一個方塊盾
-用Timer計算mpu
-抓取mpu的角度，
-使用Roll角度-15度～15度ㄧ對應方塊的Ｘ軸座標
-使用Pitch角度-15度～15度對應方塊的Y軸座標
-四面八方會有隕石向地球飛過來,左上角顯示分數，
-玩家的方塊盾可以抵擋隕石 每擋一個隕石10分
-如果隕石碰到地球遊戲Game Over
-顯示Game Over與分數
-點擊按鈕重新開始新的遊戲
+from Pico_Wear import PicoWear
+import network
+import ntptime
+import utime
+import urequests
+import ujson
+
+# 初始化 PicoWear 对象
+pico_wear = PicoWear()
+
+# Wi-Fi 连接函数
+def connect_wifi(ssid, password):
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    if not wlan.isconnected():
+        pico_wear.display.fill(0)
+        pico_wear.display.text("Connecting to", 0, 0)
+        pico_wear.display.text("Wi-Fi...", 0, 16)
+        pico_wear.display.show()
+        wlan.connect(ssid, password)
+        while not wlan.isconnected():
+            pass
+    pico_wear.display.fill(0)
+    pico_wear.display.text("Wi-Fi connected", 0, 0)
+    pico_wear.display.text("IP:" + wlan.ifconfig()[0], 0, 16)
+    pico_wear.display.show()
+    utime.sleep(2)
+    return wlan
+
+# NTP 时间同步函数
+def sync_ntp():
+    for _ in range(3):  # 尝试 3 次
+        try:
+            ntptime.settime()
+            return True
+        except:
+            utime.sleep(1)
+    return False
+
+# 获取天气数据函数
+def get_weather():
+    api_key = "7f627de3cadbfddef4e401844d78dcf2"
+    lat = "24.0058594"
+    lon = "121.5857252"
+    url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+    
+    try:
+        response = urequests.get(url)
+        data = ujson.loads(response.text)
+        response.close()
+        
+        temp = data['main']['temp']
+        humidity = data['main']['humidity']
+        weather = data['weather'][0]['main']
+        
+        return temp, humidity, weather
+    except:
+        return None, None, None
+
+# 主函数
+def main():
+    # 连接 Wi-Fi
+    wlan = connect_wifi("hlc", "hlc8462860")
+    
+    # 同步 NTP 时间
+    if sync_ntp():
+        pico_wear.display.fill(0)
+        pico_wear.display.text("Time synced", 0, 0)
+        pico_wear.display.show()
+    else:
+        pico_wear.display.fill(0)
+        pico_wear.display.text("Time sync failed", 0, 0)
+        pico_wear.display.show()
+    utime.sleep(2)
+    
+    last_weather_update = 0
+    temp, humidity, weather = None, None, None
+    
+    # 主循环显示时间和天气
+    while True:
+        current_time = utime.time() + 8 * 3600  # 调整为 +8 时区
+        local_time = utime.localtime(current_time)
+        
+        # 每小时更新一次天气
+        if current_time - last_weather_update >= 3600:
+            temp, humidity, weather = get_weather()
+            last_weather_update = current_time
+        
+        date_str = "{:04d}-{:02d}-{:02d}".format(local_time[0], local_time[1], local_time[2])
+        time_str = "{:02d}:{:02d}:{:02d}".format(local_time[3], local_time[4], local_time[5])
+        
+        pico_wear.display.fill(0)
+        pico_wear.display.text(date_str, 0, 0)
+        pico_wear.display.text(time_str, 0, 16)
+        
+        if temp is not None and humidity is not None and weather is not None:
+            temp_str = "T:{:.1f}C".format(temp)
+            humidity_str = "H:{}%".format(humidity)
+            pico_wear.display.text(temp_str, 0, 32)
+            pico_wear.display.text(weather, 64, 32)  # 在第三行中间显示天气
+            pico_wear.display.text(humidity_str, 0, 48)
+        else:
+            pico_wear.display.text("Weather Error", 0, 32)
+        
+        pico_wear.display.show()
+        
+        utime.sleep(1)
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+再幫我加入抓取未來五天"中午12點"的天氣，並顯示出來
+顯示在螢幕第6行之後
 請先一步一步分析再進行程式撰寫
+請不要省略程式碼請給出完整的程式
+
+
+
+
 

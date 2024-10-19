@@ -1,157 +1,128 @@
-import math
-import random
-from Pico_Wear import PicoWear
-from machine import Timer
+import os
+import time
+from machine import I2C, Pin
+import OLED_SH1107
+from Mpu6050_mahony import MPU6050
+from framebuf import FrameBuffer, MONO_VLSB
+import rp2
+from machine import mem32
+import network
 
-class EarthDefenseGame:
-    def __init__(self, pico_wear):
-        self.pico = pico_wear
-        self.display = self.pico.display
-        self.mpu = self.pico.mpu
-        
-        # 游戏参数
-        self.screen_width = 128
-        self.screen_height = 128
-        self.earth_radius = 10
-        self.shield_size = 10
-        self.meteor_size = 4
-        self.score = 0
-        self.game_over = False
-        
-        # 玩家盾牌位置
-        self.shield_x = self.screen_width // 2
-        self.shield_y = self.screen_height // 2
-        
-        # 陨石列表
-        self.meteors = []
-        
-        # 定时器
-        self.mpu_timer = Timer(-1)
-        self.game_timer = Timer(-1)
-        
-        # 注册按钮回调
-        self.pico.register_button_callback(self.restart_game)
-        
-    def init_game(self):
-        self.score = 0
-        self.game_over = False
-        self.meteors = []
-        self.shield_x = self.screen_width // 2
-        self.shield_y = self.screen_height // 2
-        
-    def restart_game(self):
-        if self.game_over:
-            self.init_game()
+machine.freq(250000000)
 
-    def update_shield_position(self):
-        roll, pitch, _ = self.mpu.get_angles()
-        # 将角度映射到屏幕坐标
-        self.shield_x = int(self.screen_width / 2 + (roll / 15) * (self.screen_width / 2 - self.shield_size / 2))
-        self.shield_y = int(self.screen_height / 2 + (pitch / 15) * (self.screen_height / 2 - self.shield_size / 2))
-        
-        # 确保盾牌不会超出屏幕边界
-        self.shield_x = max(0, min(self.shield_x, self.screen_width - self.shield_size))
-        self.shield_y = max(0, min(self.shield_y, self.screen_height - self.shield_size))
+#====================PICO WARE Init====================================
+wlan = network.WLAN(network.STA_IF)
+wlan.active(True)
 
-    def generate_meteor(self):
-        # 随机生成陨石的起始位置（屏幕边缘）
-        side = random.choice(['top', 'bottom', 'left', 'right'])
-        if side == 'top':
-            x = random.randint(0, self.screen_width)
-            y = 0
-        elif side == 'bottom':
-            x = random.randint(0, self.screen_width)
-            y = self.screen_height
-        elif side == 'left':
-            x = 0
-            y = random.randint(0, self.screen_height)
-        else:  # right
-            x = self.screen_width
-            y = random.randint(0, self.screen_height)
-        
-        # 计算陨石移动方向（指向地球中心）
-        dx = self.screen_width // 2 - x
-        dy = self.screen_height // 2 - y
-        length = math.sqrt(dx**2 + dy**2)
-        speed = 1  # 可以调整陨石速度
-        dx = dx / length * speed
-        dy = dy / length * speed
-        
-        self.meteors.append({'x': x, 'y': y, 'dx': dx, 'dy': dy})
+# OLED 的電源
+PAD_CONTROL_REGISTER = 0x4001c024
+mem32[PAD_CONTROL_REGISTER] = mem32[PAD_CONTROL_REGISTER] | 0b0110000
 
-    def update_meteors(self):
-        for meteor in self.meteors:
-            meteor['x'] += meteor['dx']
-            meteor['y'] += meteor['dy']
-        
-        # 移除超出屏幕的陨石
-        self.meteors = [m for m in self.meteors if 0 <= m['x'] < self.screen_width and 0 <= m['y'] < self.screen_height]
+# 設定 GP9 為輸出，並設置輸出(GND), GP8 為輸出，並設置輸出 1
+pin9 = Pin(9, Pin.OUT, value=0)
+pin8 = Pin(8, Pin.OUT, value=0)
+time.sleep(1)
+pin8 = Pin(8, Pin.OUT, value=1)
 
-    def check_collisions(self):
-        earth_x = self.screen_width // 2
-        earth_y = self.screen_height // 2
-        
-        for meteor in self.meteors[:]:  # 使用副本进行迭代，因为我们可能会修改列表
-            # 检查与盾牌的碰撞
-            if (self.shield_x < meteor['x'] < self.shield_x + self.shield_size and
-                self.shield_y < meteor['y'] < self.shield_y + self.shield_size):
-                self.meteors.remove(meteor)
-                self.score += 10
-                continue
-            
-            # 检查与地球的碰撞
-            if math.sqrt((meteor['x'] - earth_x)**2 + (meteor['y'] - earth_y)**2) < self.earth_radius:
-                self.game_over = True
-                break
+# mpu6050 的電源
+PAD_CONTROL_REGISTER = 0x4001c05c
+mem32[PAD_CONTROL_REGISTER] = mem32[PAD_CONTROL_REGISTER] | 0b0110000
 
-    def draw_game(self):
-        self.display.fill(0)  # 清空屏幕
-        
-        # 绘制地球
-        self.display.draw_circle(self.screen_width // 2, self.screen_height // 2, self.earth_radius, 1)
-        
-        # 绘制盾牌
-        self.display.draw_rectangle(int(self.shield_x), int(self.shield_y), self.shield_size, self.shield_size, 1)
-        
-        # 绘制陨石
-        for meteor in self.meteors:
-            self.display.fill_circle(int(meteor['x']), int(meteor['y']), self.meteor_size // 2, 1)
-        
-        # 显示分数
-        self.display.text(f"Score: {self.score}", 0, 0, 1)
-        
-        if self.game_over:
-            self.display.text("Game Over", 30, 50, 1)
-            self.display.text(f"Score: {self.score}", 30, 70, 1)
-            self.display.text("Click to restart", 10, 90, 1)
-        
-        self.display.show()
+# GP22 為輸出，並設置輸出 1
+pin22 = Pin(22, Pin.OUT, value=0)
+time.sleep(1)
+pin22 = Pin(22, Pin.OUT, value=1)
+time.sleep(1)
+# 初始化I2C
+i2c0 = I2C(0, scl=Pin(21), sda=Pin(20), freq=400000)
+i2c1 = I2C(1, scl=Pin(7), sda=Pin(6), freq=400000)
+display = OLED_SH1107.SH1107_I2C(128, 128, i2c1, None, 0x3c)
 
-    def mpu_callback(self, timer):
-        self.mpu.update_mahony()
+# 清空顯示屏
+display.fill(0)
+display.show()
 
-    def game_update(self, timer):
-        if not self.game_over:
-            self.update_shield_position()
-            self.update_meteors()
-            self.check_collisions()
-            if random.random() < 0.1:  # 10% 概率生成新陨石
-                self.generate_meteor()
-            self.draw_game()
+# 初始化MPU6050
+mpu = MPU6050(i2c0)
 
-    def run(self):
-        self.init_game()
-        self.mpu_timer.init(period=10, mode=Timer.PERIODIC, callback=self.mpu_callback)
-        self.game_timer.init(period=50, mode=Timer.PERIODIC, callback=self.game_update)
+# 取得所有py
+def list_files():
+	files = [f for f in os.listdir() if f.endswith(".py")]
+	return files
 
-        try:
-            while True:
-                pass
-        except KeyboardInterrupt:
-            self.mpu_timer.deinit()
-            self.game_timer.deinit()
+# 显示文件列表并高亮选中的文件
+def display_files(files, selected_index, scroll_offset):
+	display.fill(0)
+	visible_files = files[scroll_offset:scroll_offset+11]
+	for i, file_name in enumerate(visible_files):
+		y = i * 12
+		if i + scroll_offset == selected_index:
+			display.rect(0, y, 128, 12, 1)  # 绘制选中文件的方框
+		display.text(file_name, 2, y + 2, 1)
+	display.show()
 
-# 主程序
-pico = PicoWear()
-game = EarthDefenseGame(pico)
-game.run()
+# 获取当前的方向和倾斜角度
+def get_direction():
+	mpu.update_mahony()
+	_, pitch, _ = mpu.get_angles()
+	direction = 0
+	if abs(pitch) > 5:
+		direction = 1 if pitch > 0 else -1
+		speed = min(max(abs(int(pitch)) - 5, 1), 5)  # 限制速度在1-5之间
+	else:
+		speed = 0
+	return direction, speed
+
+# 執行選中的 Python 檔案
+def execute_file(file_name):
+	print(f"Executing {file_name}...")
+	# 使用 execfile 來執行選中的 Python 檔案
+	try:
+		exec(open(file_name).read())
+	except Exception as e:
+		print(f"Error executing {file_name}: {e}")
+
+def main():
+	files = list_files()
+	if not files:
+		print("No files found.")
+		return
+	
+	selected_index = 0
+	scroll_offset = 0
+	display_files(files, selected_index, scroll_offset)
+	
+	last_update_time = time.ticks_ms()
+	accumulated_movement = 0
+	
+	while True:
+		direction, speed = get_direction()
+		current_time = time.ticks_ms()
+		
+		if direction != 0 and time.ticks_diff(current_time, last_update_time) > 10:  # 50ms更新一次
+			accumulated_movement += speed
+			if accumulated_movement >= 1:
+				pixels_to_move = int(accumulated_movement)
+				accumulated_movement -= pixels_to_move
+				
+				new_index = selected_index + direction
+				if 0 <= new_index < len(files):
+					selected_index = new_index
+					if selected_index < scroll_offset:
+						scroll_offset = max(0, scroll_offset - 1)
+					elif selected_index >= scroll_offset + 11:
+						scroll_offset = min(len(files) - 11, scroll_offset + 1)
+				
+				display_files(files, selected_index, scroll_offset)
+				last_update_time = current_time
+
+		button = rp2.bootsel_button()
+		if button == 1:
+			while button == 1:
+				button = rp2.bootsel_button()
+			print(f"Selected file: {files[selected_index]}")
+			execute_file(files[selected_index])
+			time.sleep(0.5)
+
+if __name__ == "__main__":
+	main()

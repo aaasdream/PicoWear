@@ -10,13 +10,13 @@ from Pico_Wear import PicoWear
 pico = PicoWear()
 
 # 遊戲參數
-CAR_WIDTH = 20
-CAR_HEIGHT = 10
+CAR_WIDTH = 10
+CAR_HEIGHT = 15
 SCREEN_WIDTH = 128
 SCREEN_HEIGHT = 128
 OBSTACLE_WIDTH = 10
 OBSTACLE_HEIGHT = 10
-OBSTACLE_SPEED = 2
+OBSTACLE_SPEED = 4
 LANE_SPEED = 4
 LANE_WIDTH = 2
 LANE_GAP = 20
@@ -27,8 +27,8 @@ class Car:
         self.y = SCREEN_HEIGHT - CAR_HEIGHT - 5
 
     def move(self, roll):
-        move = int(roll * 2)
-        self.x = max(0, min(SCREEN_WIDTH - CAR_WIDTH, self.x + move))
+        move = int(roll * 2 + 64)
+        self.x = max(0, min(SCREEN_WIDTH - CAR_WIDTH, move))
 
     def draw(self):
         pico.display.fill_rectangle(self.x, self.y, CAR_WIDTH, CAR_HEIGHT, 1)
@@ -77,16 +77,16 @@ def main():
     obstacles = []
     road_lanes = RoadLanes()
     score = 0
-    game_speed = 0.05
+    game_speed = 0.02
 
     while True:
-        pico.mpu.update_mahony()
-        roll, _, _ = pico.mpu.get_angles()
+        pico.mpu.calculate_tilt_angle()
+        roll = -pico.mpu.Get_tilt_angle()
 
         car.move(roll)
         road_lanes.move()
 
-        if random.random() < 0.05:
+        if random.random() < 0.2:
             obstacles.append(Obstacle())
 
         pico.display.fill(0)

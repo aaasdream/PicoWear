@@ -1,0 +1,512 @@
+Pico_Wear.py 使用說明
+
+PicoWear 類別用於控制 Pico Wear 硬體，透過這個類別，您可以：
+  1. 初始化並控制 Pico Wear 的硬體元件。
+  2. 註冊並處理按鈕按下事件。
+  3. 傳送訊息到 LINE Notify 服務。
+  4. 連接到 MQTT 伺服器進行訊息通訊。
+
+主要函數說明如下：
+__init__(): 初始化 PicoWear 物件，設置計時器、LED、顯示螢幕、MPU6050 感測器、Wi-Fi、RTC 和 MQTT 客戶端。
+init_hardware(button_callback=None): 初始化所有硬體元件，包括 OLED 顯示螢幕、MPU6050 傾斜感測器、Wi-Fi、RTC 和 LED。可選參數 button_callback 用於設置按鈕按下時的回呼函數。
+detect_button(timer, callback=None): 偵測按鈕狀態，若偵測到按鈕被按下，呼叫指定的回呼函數。
+register_button_callback(callback): 註冊按鈕按下時的回呼函數，替換之前的計時器回呼。
+line_notify_message(token, msg): 使用 LINE Notify API 傳送訊息。參數 token 為授權令牌，msg 為傳送的訊息內容。
+mqtt_connect(mqtt_broker): 連接到指定的 MQTT 伺服器。參數 mqtt_broker 為伺服器位址，成功連接後返回 MQTT 客戶端物件。 
+
+PicoWear 示例：
+from Pico_Wear import PicoWear  # 引入 PicoWear 類別
+# 創建 PicoWear 物件
+pico_wear = PicoWear()
+
+# 註冊按鈕回呼函數範例
+def on_button_press():
+    print("按鈕被按下")
+pico.register_button_callback(on_button_press)#PicoWear只有一個按鈕CallBack沒有回傳值
+
+PicoWear.display (OLED) 的使用說明：
+這是 Micropython 中一個 OLED 的驅動，解析度為 128x128 的單色螢幕，每行最多只能顯示 16 個字，超出的話要換行顯示，只能顯示英文字。
+基本繪圖：
+繼承 framebuf.FrameBuffer 除了原本 framebuf.FrameBuffer 的函數還包含如下：
+畫點：display.pixel(x, y, color)
+畫線：display.line(x1, y1, x2, y2, color)
+畫矩形：display.draw_rectangle(x, y, width, height, color)
+填充矩形：display.fill_rectangle(x, y, width, height, color)
+畫圓：display.draw_circle(x, y, radius, color)
+填充圓：display.fill_circle(x, y, radius, color)
+畫三角形：display.draw_triangle(x0, y0, x1, y1, x2, y2, color)
+填充三角形：display.fill_triangle(x0, y0, x1, y1, x2, y2, color)
+文字顯示：
+顯示文字：display.text("Hello", x, y, color)
+位圖顯示：
+讀取圖片：Image_fb = display.read_bmp_mono('圖片路徑名稱')
+繪製位圖：display.drawBitmap(self, Image_fb, x, y)
+顯示控制：
+更新顯示：display.show()
+清除顯示：display.fill(0) 然後 display.show()
+調整對比度：display.contrast(contrast_value)
+螢幕翻轉：display.rotate(flag)
+反轉顯示：display.invert(invert_flag)
+電源管理：
+開啟顯示：display.poweron()
+關閉顯示：display.poweroff()
+睡眠模式：display.sleep(sleep_flag)
+注意：
+顏色使用 1 表示點亮，0 表示熄滅。
+座標系統從左上角 (0,0) 開始。
+該物件已經使用 Double Buffer 呼叫 display.show() 將緩衝顯示出來。
+把畫面填充完畢再一次性顯示可以去除閃爍問題。
+
+PicoWear.mpu使用說明
+Mpu6050_mahony.py
+使用 MPU6050 陀螺儀和加速度計感測器設計的。
+它可以進行平躺Roll Pitch ，站立時傾斜角度的計算，並透過Mahony濾波算法來實現更準確的姿態估計。
+務必每秒100計算才能取得穩定角度,請單獨一個Timer呼叫計算
+mpu.update_mahony()  #如果要取得roll pitch
+mpu.calculate_tilt_angle() #如果要站立Get_tilt_angle
+該類別已使用雙緩衝去除角度計算競爭
+注意
+Timer中斷頻率高,請在主程式判斷KeyboardInterrupt時使用for timer in timers: timer.deinit(),關閉所有Timer
+主要方法
+__init__(self, i2c, addr=0x68)
+    初始化 MPU6050 類別。
+    參數 i2c 是必須的，它是一個已配置的 I2C 對象。
+    參數 addr 是設備的 I2C 地址，默認為 0x68。
+calibrate(self, samples=100)
+    校準 MPU6050 roll pitch，減少讀數誤差。
+update_mahony(self)
+    計算mpu6050平躺的。更新姿態估計，使用 Mahony 濾波算法。
+    這個方法會自動根據加速度計和陀螺儀的讀數更新四元數，從而得到較準確的姿態角。
+    每秒需要進行100運算,運算結果使用get_angles() 取得
+get_angles(self)
+    獲取計算後的歐拉角（Roll, Pitch, Yaw）。角度以度（°）為單位。
+read_accel(self)
+    讀取加速度數據，從 MPU6050 的加速度計傳感器獲取數據。返回的加速度數據經過轉換為 g 單位（重力加速度的倍數）。
+read_gyro(self)
+    讀取陀螺儀數據，從 MPU6050 的陀螺儀傳感器獲取數據。返回的陀螺儀數據經過轉換為度每秒（deg/s），描述角速度。
+read_accel_raw(self)
+    直接讀取原始加速度數據。
+calculate_tilt_angle(self)
+    計算mpu6050站立之後的傾斜角度，使用互補濾波器來平滑角度變化，以應對快速動態變化。
+    務必每秒100計算才能算出穩定角度。
+    只有計算要取出角度請使用Get_tilt_angle()
+Get_tilt_angle(self)
+    取得calculate_tilt_angles計算後的tilt角度
+    此方法返回tilt角度以(度)為單位，並會將角度維持在 -180° 到 180° 的範圍內。
+calibrate_tilt(self, num_samples=100)
+    校準站立時傾斜角度，主要用於設置加速度計的偏移值。
+
+mpu與display合作時主程式架構
+timer = machine.Timer()
+timer.init(period=10, mode=machine.Timer.PERIODIC, callback=update_tilt)
+try:
+    while True:
+        angle = mpu 取得角度
+        update_display(angle)
+        utime.sleep(0.05)
+except KeyboardInterrupt:
+    timer.deinit()
+    print("程序已停止")
+    
+請幫我寫出:
+    
+這是一個飛機空頭補給的動畫演示，有一條海平線，海平線的右邊是一艘船
+天空中有一台飛機，由左邊往右邊飛，飛機會丟下補給品，
+補給品因為地心引力與飛機往右的力，呈現一條拋物線
+如果補給品碰到船畫面顯示Success，如果補給品掉到海面以下，顯示Fail
+按下按鈕重新演示
+
+from Pico_Wear import PicoWear
+import time
+import math
+import random
+
+# ========== 全域變數 ==========
+pico_wear = None
+plane_x, plane_y = 0, 20
+supply_x, supply_y = 0, 20
+ship_x, ship_y = 110, 100
+sea_level = 110
+is_dropping = False
+animation_step = 0
+result = ""
+# =============================
+
+def reset_animation():
+    global plane_x, plane_y, supply_x, supply_y, is_dropping, animation_step, result
+    plane_x, plane_y = 0, 20
+    supply_x, supply_y = 0, 20
+    is_dropping = False
+    animation_step = 0
+    result = ""
+
+def button_callback():
+    reset_animation()
+
+def update_animation():
+    global plane_x, plane_y, supply_x, supply_y, is_dropping, animation_step, result
+    
+    if animation_step < 50:
+        plane_x += 2
+        if not is_dropping and plane_x > 40:
+            is_dropping = True
+            supply_x, supply_y = plane_x, plane_y
+    
+    if is_dropping:
+        supply_x += 2
+        supply_y += animation_step // 5
+        
+        if supply_y >= sea_level:
+            if abs(supply_x - ship_x) < 10:
+                result = "Success"
+            else:
+                result = "Fail"
+    
+    animation_step += 1
+    if animation_step >= 100:
+        reset_animation()
+
+def draw_scene():
+    pico_wear.display.fill(0)
+    
+    # Draw sea
+    pico_wear.display.fill_rectangle(0, sea_level, 128, 18, 1)
+    
+    # Draw ship
+    pico_wear.display.fill_rectangle(ship_x-5, ship_y-10, 10, 10, 1)
+    
+    # Draw plane
+    pico_wear.display.fill_rectangle(plane_x, plane_y, 10, 5, 1)
+    
+    # Draw supply
+    if is_dropping:
+        pico_wear.display.fill_rectangle(supply_x, supply_y, 3, 3, 1)
+    
+    # Draw result
+    if result:
+        pico_wear.display.text(result, 40, 60, 1)
+    
+    pico_wear.display.show()
+
+def main():
+    global pico_wear
+    pico_wear = PicoWear()
+    print('完成 Pico Wear 的初始化')
+    
+    pico_wear.register_button_callback(button_callback)
+    
+    while True:
+        update_animation()
+        draw_scene()
+        time.sleep(0.1)
+
+if __name__ == '__main__':
+    main()
+
+
+
+
+現在這個程式補給失敗    
+請幫我在飛機投下補給之後開始print關鍵參數
+直到Fail或是Success
+
+
+完成 Pico Wear 的初始化
+Step: 20, Supply X: 44, Supply Y: 24
+Step: 21, Supply X: 46, Supply Y: 28
+Step: 22, Supply X: 48, Supply Y: 32
+Step: 23, Supply X: 50, Supply Y: 36
+Step: 24, Supply X: 52, Supply Y: 40
+Step: 25, Supply X: 54, Supply Y: 45
+Step: 26, Supply X: 56, Supply Y: 50
+Step: 27, Supply X: 58, Supply Y: 55
+Step: 28, Supply X: 60, Supply Y: 60
+Step: 29, Supply X: 62, Supply Y: 65
+Step: 30, Supply X: 64, Supply Y: 71
+Step: 31, Supply X: 66, Supply Y: 77
+Step: 32, Supply X: 68, Supply Y: 83
+Step: 33, Supply X: 70, Supply Y: 89
+Step: 34, Supply X: 72, Supply Y: 95
+Step: 35, Supply X: 74, Supply Y: 102
+Step: 36, Supply X: 76, Supply Y: 109
+Step: 37, Supply X: 78, Supply Y: 116
+Final result: Fail
+Final Supply X: 78, Final Supply Y: 116
+Ship X: 110, Ship Y: 100
+Step: 38, Supply X: 80, Supply Y: 123
+Final result: Fail
+Final Supply X: 80, Final Supply Y: 123
+Ship X: 110, Ship Y: 100
+Step: 39, Supply X: 82, Supply Y: 130
+Final result: Fail
+Final Supply X: 82, Final Supply Y: 130
+
+
+請看目前執行狀況，分析怎麼讓補給品落在船上
+Pico_Wear.py 使用說明
+
+PicoWear 類別用於控制 Pico Wear 硬體，透過這個類別，您可以：
+  1. 初始化並控制 Pico Wear 的硬體元件。
+  2. 註冊並處理按鈕按下事件。
+  3. 傳送訊息到 LINE Notify 服務。
+  4. 連接到 MQTT 伺服器進行訊息通訊。
+
+主要函數說明如下：
+__init__(): 初始化 PicoWear 物件，設置計時器、LED、顯示螢幕、MPU6050 感測器、Wi-Fi、RTC 和 MQTT 客戶端。
+init_hardware(button_callback=None): 初始化所有硬體元件，包括 OLED 顯示螢幕、MPU6050 傾斜感測器、Wi-Fi、RTC 和 LED。可選參數 button_callback 用於設置按鈕按下時的回呼函數。
+detect_button(timer, callback=None): 偵測按鈕狀態，若偵測到按鈕被按下，呼叫指定的回呼函數。
+register_button_callback(callback): 註冊按鈕按下時的回呼函數，替換之前的計時器回呼。
+line_notify_message(token, msg): 使用 LINE Notify API 傳送訊息。參數 token 為授權令牌，msg 為傳送的訊息內容。
+mqtt_connect(mqtt_broker): 連接到指定的 MQTT 伺服器。參數 mqtt_broker 為伺服器位址，成功連接後返回 MQTT 客戶端物件。
+ 
+PicoWear.display (OLED) 的使用說明：
+這是 Micropython 中一個 OLED 的驅動，解析度為 128x128 的單色螢幕，每行最多只能顯示 16 個字，超出的話要換行顯示，只能顯示英文字。
+
+基本繪圖：
+繼承 framebuf.FrameBuffer 除了原本 framebuf.FrameBuffer 的函數還包含如下：
+畫點：display.pixel(x, y, color)
+畫線：display.line(x1, y1, x2, y2, color)
+畫矩形：display.draw_rectangle(x, y, width, height, color)
+填充矩形：display.fill_rectangle(x, y, width, height, color)
+畫圓：display.draw_circle(x, y, radius, color)
+填充圓：display.fill_circle(x, y, radius, color)
+畫三角形：display.draw_triangle(x0, y0, x1, y1, x2, y2, color)
+填充三角形：display.fill_triangle(x0, y0, x1, y1, x2, y2, color)
+文字顯示：
+顯示文字：display.text("Hello", x, y, color)
+位圖顯示：
+讀取圖片：Image_fb = display.read_bmp_mono('圖片路徑名稱')
+繪製位圖：display.drawBitmap(self, Image_fb, x, y)
+顯示控制：
+更新顯示：display.show()
+清除顯示：display.fill(0) 然後 display.show()
+調整對比度：display.contrast(contrast_value)
+螢幕翻轉：display.rotate(flag)
+反轉顯示：display.invert(invert_flag)
+電源管理：
+開啟顯示：display.poweron()
+關閉顯示：display.poweroff()
+睡眠模式：display.sleep(sleep_flag)
+注意：
+顏色使用 1 表示點亮，0 表示熄滅。
+座標系統從左上角 (0,0) 開始。
+該物件已經使用 Double Buffer 呼叫 display.show() 將緩衝顯示出來。
+把畫面填充完畢再一次性顯示可以去除閃爍問題。
+
+self.mpu 使用說明
+使用 MPU6050 陀螺儀和加速度計感測器設計的。
+它可以進行平躺 Roll Pitch，站立時傾斜角度的計算，並透過 Mahony 濾波算法來實現更準確的姿態估計。
+務必每秒一百次計算才能取得穩定角度，請使用 Timer 進行呼叫。
+mpu.update_mahony()
+mpu.calculate_tilt_angles()
+該類別已使用雙緩衝去除角度計算競爭。
+
+主要函數說明如下：
+__init__(self, i2c, addr=0x68)
+    初始化 MPU6050 類別。
+    參數 i2c 是必須的，它是一個已配置的 I2C 物件。
+    參數 addr 是設備的 I2C 位址，預設為 0x68。
+calibrate(self, samples=100)
+    校準 MPU6050，減少讀數誤差。這個方法會收集多個樣本來計算平均偏差。
+update_mahony(self)
+    計算 mpu6050 平躺的。更新姿態估計，使用 Mahony 濾波算法。
+    這個方法會自動根據加速度計和陀螺儀的讀數更新四元數，從而得到較準確的姿態角。
+    每秒需要進行 100 運算，運算結果使用 get_angles() 取得。
+get_angles(self)
+    獲取計算後的歐拉角（Roll, Pitch, Yaw）。角度以度（°）為單位。
+read_accel(self)
+    讀取加速度資料，從 MPU6050 的加速度計感測器取得資料。返回的加速度資料經過轉換為 g 單位（重力加速度的倍數）。
+read_gyro(self)
+    讀取陀螺儀資料，從 MPU6050 的陀螺儀感測器取得資料。返回的陀螺儀資料經過轉換為度每秒（deg/s），描述角速度。
+read_accel_raw(self)
+    直接讀取原始加速度資料。
+calculate_tilt_angles_with_filter(self)
+    計算 mpu6050 站立之後的傾斜角度，使用互補濾波器來平滑角度變化，以應對快速動態變化。
+    此方法返回的角度以度（°）為單位，並會將角度維持在 -180° 到 180° 的範圍內。
+Get_tilt_angles(self)
+    取得 Get_tilt_angles 計算後的角度。
+calibrate_tilt(self, num_samples=100)
+    校準站立時傾斜角度，主要用於設置加速度計的偏移值。
+
+PicoWear 示例：
+from Pico_Wear import PicoWear  # 引入 PicoWear 類別
+# 創建 PicoWear 物件
+pico_wear = PicoWear()
+
+# 註冊按鈕回呼函數
+def on_button_press():
+    print("按鈕被按下")
+pico.register_button_callback(on_button_press)#PicoWear只有一個按鈕CallBack沒有回傳值
+
+# 傳送 LINE Notify 訊息
+pico.line_notify_message("your_line_token", "Hello from PicoWear!")
+
+# 連接 MQTT 伺服器
+mqtt_client = pico.mqtt_connect("mqtt_broker_address")
+if mqtt_client:
+    mqtt_client.publish("topic", "message")
+
+# 驅動 PicoWear 內建的 LED
+pico_wear.led.value(1)  # 點亮 LED
+pico_wear.led.value(0)  # 熄滅 LED
+pico_wear.led.toggle()  # 切換 LED
+
+# 判斷 Wi-Fi 是否已經連線
+pico_wear.wifi.isconnected()
+
+# 取得 RTC 的時間
+pico_wear.rtc.datetime()
+
+# 取得 MAC 地址
+pico_wear.mac_addr
+
+# main.py
+from Pico_Wear import PicoWear  # 引入 PicoWear 類別
+import time
+
+# ========== 全域變數 ==========
+pico_wear = None
+# =============================
+def main():
+    global pico_wear
+    pico_wear = PicoWear()
+    print('完成 Pico Wear 的初始化')
+    
+    while True:
+        time.sleep(0.1)
+if __name__ == '__main__':
+    main()
+
+以上是 main.py 的基本框架，不得使用額外的模組的情況下，來完成以下的需求： 
+請幫我寫出:
+    
+    
+這是一個飛機空頭補給的動畫演示，有一條海平線，海平線的右邊是一艘船
+天空中有一台飛機，由左邊往右邊飛，飛機會丟下補給品，
+補給品因為地心引力與飛機往右的力，呈現一條拋物線
+如果補給品碰到船畫面顯示Success，如果補給品掉到海面以下，顯示Fail
+按下按鈕重新演示
+
+from Pico_Wear import PicoWear
+import time
+import math
+import random
+
+# ========== 全域變數 ==========
+pico_wear = None
+plane_x, plane_y = 0, 20
+supply_x, supply_y = 0, 20
+ship_x, ship_y = 110, 100
+sea_level = 110
+is_dropping = False
+animation_step = 0
+result = ""
+# =============================
+
+def reset_animation():
+    global plane_x, plane_y, supply_x, supply_y, is_dropping, animation_step, result
+    plane_x, plane_y = 0, 20
+    supply_x, supply_y = 0, 20
+    is_dropping = False
+    animation_step = 0
+    result = ""
+
+def button_callback():
+    reset_animation()
+
+def update_animation():
+    global plane_x, plane_y, supply_x, supply_y, is_dropping, animation_step, result
+    
+    if animation_step < 50:
+        plane_x += 2
+        if not is_dropping and plane_x > 40:
+            is_dropping = True
+            supply_x, supply_y = plane_x, plane_y
+    
+    if is_dropping:
+        supply_x += 2
+        supply_y += animation_step // 5
+        
+        if supply_y >= sea_level:
+            if abs(supply_x - ship_x) < 10:
+                result = "Success"
+            else:
+                result = "Fail"
+    
+    animation_step += 1
+    if animation_step >= 100:
+        reset_animation()
+
+def draw_scene():
+    pico_wear.display.fill(0)
+    
+    # Draw sea
+    pico_wear.display.fill_rectangle(0, sea_level, 128, 18, 1)
+    
+    # Draw ship
+    pico_wear.display.fill_rectangle(ship_x-5, ship_y-10, 10, 10, 1)
+    
+    # Draw plane
+    pico_wear.display.fill_rectangle(plane_x, plane_y, 10, 5, 1)
+    
+    # Draw supply
+    if is_dropping:
+        pico_wear.display.fill_rectangle(supply_x, supply_y, 3, 3, 1)
+    
+    # Draw result
+    if result:
+        pico_wear.display.text(result, 40, 60, 1)
+    
+    pico_wear.display.show()
+
+def main():
+    global pico_wear
+    pico_wear = PicoWear()
+    print('完成 Pico Wear 的初始化')
+    
+    pico_wear.register_button_callback(button_callback)
+    
+    while True:
+        update_animation()
+        draw_scene()
+        time.sleep(0.1)
+
+if __name__ == '__main__':
+    main()
+
+
+完成 Pico Wear 的初始化
+Step: 20, Supply X: 44, Supply Y: 24
+Step: 21, Supply X: 46, Supply Y: 28
+Step: 22, Supply X: 48, Supply Y: 32
+Step: 23, Supply X: 50, Supply Y: 36
+Step: 24, Supply X: 52, Supply Y: 40
+Step: 25, Supply X: 54, Supply Y: 45
+Step: 26, Supply X: 56, Supply Y: 50
+Step: 27, Supply X: 58, Supply Y: 55
+Step: 28, Supply X: 60, Supply Y: 60
+Step: 29, Supply X: 62, Supply Y: 65
+Step: 30, Supply X: 64, Supply Y: 71
+Step: 31, Supply X: 66, Supply Y: 77
+Step: 32, Supply X: 68, Supply Y: 83
+Step: 33, Supply X: 70, Supply Y: 89
+Step: 34, Supply X: 72, Supply Y: 95
+Step: 35, Supply X: 74, Supply Y: 102
+Step: 36, Supply X: 76, Supply Y: 109
+Step: 37, Supply X: 78, Supply Y: 116
+Final result: Fail
+Final Supply X: 78, Final Supply Y: 116
+Ship X: 110, Ship Y: 100
+Step: 38, Supply X: 80, Supply Y: 123
+Final result: Fail
+Final Supply X: 80, Final Supply Y: 123
+Ship X: 110, Ship Y: 100
+Step: 39, Supply X: 82, Supply Y: 130
+Final result: Fail
+Final Supply X: 82, Final Supply Y: 130
+
+
+
+根據這個數據，請一步一步分析，如何用計算的方式求出投放位置
+達到Success
+

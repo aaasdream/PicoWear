@@ -1,55 +1,60 @@
 from Pico_Wear import PicoWear
-from machine import Timer
+import utime
+import math
 
-pico = PicoWear()
+# 初始化 PicoWear
+pico_wear = PicoWear()
+display = pico_wear.display
+mpu = pico_wear.mpu
 
-# 球的初始位置和大小
-ball_x = 64
-ball_y = 64
-ball_radius = 5
+# 屏幕中心坐标
+CENTER_X = 64
+CENTER_Y = 64
 
-# 更新MPU数据的定时器
+# 小球初始位置和半径
+ball_x = CENTER_X
+ball_y = CENTER_Y
+BALL_RADIUS = 5
+
+# 更新 MPU 数据的定时器回调函数
 def update_mpu(timer):
-    pico.mpu.update_mahony()
+    mpu.update_mahony()
 
-# 绘制屏幕的定时器
-def update_display(timer):
+# 更新显示的函数
+def update_display():
     global ball_x, ball_y
     
-    # 获取Roll和Pitch角度
-    roll, pitch, _ = pico.mpu.get_angles()
+    # 获取 Roll 和 Pitch 角度
+    roll, pitch, _ = mpu.get_angles()
     
     # 将角度映射到屏幕坐标
-    ball_x = int(64 + (roll / 60) * 64)
-    ball_y = int(64 + (pitch / 60) * 64)
+    ball_x = int(CENTER_X + (roll / 60) * CENTER_X)
+    ball_y = int(CENTER_Y + (pitch / 60) * CENTER_Y)
     
-    # 限制球的位置在屏幕范围内
-    ball_x = max(ball_radius, min(127 - ball_radius, ball_x))
-    ball_y = max(ball_radius, min(127 - ball_radius, ball_y))
+    # 确保球不会超出屏幕边界
+    ball_x = max(BALL_RADIUS, min(127 - BALL_RADIUS, ball_x))
+    ball_y = max(BALL_RADIUS, min(127 - BALL_RADIUS, ball_y))
     
-    # 清空屏幕
-    pico.display.fill(0)
+    # 清除屏幕
+    display.fill(0)
     
-    # 绘制中心线
-    pico.display.line(64, 64, ball_x, ball_y, 1)
+    # 绘制中心到球的连线
+    display.line(CENTER_X, CENTER_Y, ball_x, ball_y, 1)
     
     # 绘制小球
-    pico.display.fill_circle(ball_x, ball_y, ball_radius, 1)
+    display.fill_circle(ball_x, ball_y, BALL_RADIUS, 1)
     
     # 更新显示
-    pico.display.show()
+    display.show()
 
-# 设置定时器
-Timer(period=10, mode=Timer.PERIODIC, callback=update_mpu)
-Timer(period=50, mode=Timer.PERIODIC, callback=update_display)
+# 设置 MPU 更新定时器
+mpu_timer = machine.Timer()
+mpu_timer.init(period=10, mode=machine.Timer.PERIODIC, callback=update_mpu)
 
-# 主循环
 try:
     while True:
-        pass
+        update_display()
+        utime.sleep(0.02)
 except KeyboardInterrupt:
+    mpu_timer.deinit()
     print("程序已停止")
-finally:
-    # 清理定时器
-    for timer in Timer.timers():
-        timer.deinit()

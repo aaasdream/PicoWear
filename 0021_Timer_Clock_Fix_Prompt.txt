@@ -1,4 +1,3 @@
-
 from Pico_Wear import PicoWear
 import math
 import time
@@ -64,10 +63,16 @@ timer.init(period=1000, mode=machine.Timer.PERIODIC, callback=lambda t:draw_cloc
 while True:
     time.sleep(1)
 
+
+
+
+
 請修正下列問題: 
-1.時鐘應該是12在中間上面的刻度,但是現在卻在左邊9點鐘位置,應該要順時鐘轉90度．
-請先說明你將要怎麼改，
-驗算這樣修改是否正確，
-驗證3次
-給出正確的程式碼
+1.數字顯示位置錯了,應該要再往順時鐘90度
+請一步一步分析 並修正錯誤
+
+
+
+
+
 

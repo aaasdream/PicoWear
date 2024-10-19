@@ -1,62 +1,72 @@
-Pico_Wear.py
-PicoWear 類別于控制 Pico Wear 硬件，主要函数说明如下：
-__init__(): 初始化 PicoWear 对象，设置定时器、LED、显示屏、MPU6050 传感器、Wi-Fi、RTC 和 MQTT 客户端。
-init_hardware(button_callback=None): 初始化所有硬件组件，包括 OLED 显示屏、MPU6050 倾斜传感器、Wi-Fi、RTC 和 LED。可选参数 button_callback 用于设置按钮按下时的回调函数。
-detect_button(timer, callback=None): 检测按钮状态，若检测到按钮被按下，调用指定的回调函数。
-register_button_callback(callback): 注册按钮按下时的回调函数，替换之前的定时器回调
-line_notify_message(token, msg): 使用 LINE Notify API 发送消息。参数 token 为授权令牌，msg 为发送的消息内容。
-mqtt_connect(mqtt_broker): 连接到指定的 MQTT 服务器。参数 mqtt_broker 为服务器地址，成功连接后返回 MQTT 客户端对象。
-通过使用 PicoWear 类，您可以：
-初始化并控制 Pico Wear 的硬件组件。
-注册并处理按钮按下事件。
-发送消息到 LINE Notify 服务。
-连接到 MQTT 服务器进行消息通信。
+Pico_Wear.py 使用說明
 
-PicoWear.display使用說明
-這是Micropython中一個OLED的驅動
-他的大小為128x128的單色螢幕
-基本繪圖:
-繼承framebuf.FrameBuffer 除了原本framebuf.FrameBuffer的函數還包含如下
-畫點: display.pixel(x, y, color)
-畫線: display.line(x1, y1, x2, y2, color)
-畫矩形: display.draw_rectangle(x, y, width, height, color)
-填充矩形: display.fill_rectangle(x, y, width, height, color)
-畫圓: display.draw_circle(x, y, radius, color)
-填充圓: display.fill_circle(x, y, radius, color)
-畫三角形: display.draw_triangle(x0, y0, x1, y1, x2, y2, color)
-填充三角形: display.fill_triangle(x0, y0, x1, y1, x2, y2, color)
-文字顯示:
-顯示文字: display.text("Hello", x, y, color)
-位圖顯示:
+PicoWear 類別用於控制 Pico Wear 硬體，透過這個類別，您可以：
+  1. 初始化並控制 Pico Wear 的硬體元件。
+  2. 註冊並處理按鈕按下事件。
+  3. 傳送訊息到 LINE Notify 服務。
+  4. 連接到 MQTT 伺服器進行訊息通訊。
+
+主要函數說明如下：
+__init__(): 初始化 PicoWear 物件，設置計時器、LED、顯示螢幕、MPU6050 感測器、Wi-Fi、RTC 和 MQTT 客戶端。
+init_hardware(button_callback=None): 初始化所有硬體元件，包括 OLED 顯示螢幕、MPU6050 傾斜感測器、Wi-Fi、RTC 和 LED。可選參數 button_callback 用於設置按鈕按下時的回呼函數。
+detect_button(timer, callback=None): 偵測按鈕狀態，若偵測到按鈕被按下，呼叫指定的回呼函數。
+register_button_callback(callback): 註冊按鈕按下時的回呼函數，替換之前的計時器回呼。
+line_notify_message(token, msg): 使用 LINE Notify API 傳送訊息。參數 token 為授權令牌，msg 為傳送的訊息內容。
+mqtt_connect(mqtt_broker): 連接到指定的 MQTT 伺服器。參數 mqtt_broker 為伺服器位址，成功連接後返回 MQTT 客戶端物件。 
+
+PicoWear 示例：
+from Pico_Wear import PicoWear  # 引入 PicoWear 類別
+# 創建 PicoWear 物件
+pico_wear = PicoWear()
+
+# 註冊按鈕回呼函數範例
+def on_button_press():
+    print("按鈕被按下")
+pico.register_button_callback(on_button_press)#PicoWear只有一個按鈕CallBack沒有回傳值
+
+PicoWear.display (OLED) 的使用說明：
+這是 Micropython 中一個 OLED 的驅動，解析度為 128x128 的單色螢幕，每行最多只能顯示 16 個字，超出的話要換行顯示，只能顯示英文字。
+基本繪圖：
+繼承 framebuf.FrameBuffer 除了原本 framebuf.FrameBuffer 的函數還包含如下：
+畫點：display.pixel(x, y, color)
+畫線：display.line(x1, y1, x2, y2, color)
+畫矩形：display.draw_rectangle(x, y, width, height, color)
+填充矩形：display.fill_rectangle(x, y, width, height, color)
+畫圓：display.draw_circle(x, y, radius, color)
+填充圓：display.fill_circle(x, y, radius, color)
+畫三角形：display.draw_triangle(x0, y0, x1, y1, x2, y2, color)
+填充三角形：display.fill_triangle(x0, y0, x1, y1, x2, y2, color)
+文字顯示：
+顯示文字：display.text("Hello", x, y, color)
+位圖顯示：
 讀取圖片：Image_fb = display.read_bmp_mono('圖片路徑名稱')
-繪製位圖: display.drawBitmap(self,Image_fb, x, y )
-顯示控制:
-更新顯示: display.show()
-清除顯示: display.fill(0) 然後 display.show()
-調整對比度: display.contrast(contrast_value)
-屏幕翻轉: display.rotate(flag)
-反轉顯示: display.invert(invert_flag)
-電源管理:
-開啟顯示: display.poweron()
-關閉顯示: display.poweroff()
-睡眠模式: display.sleep(sleep_flag)
-注意:
-顏色使用1表示點亮，0表示熄滅
-座標系統從左上角(0,0)開始
-該物件已經使用Double Buffer調用display.show()將緩衝顯示出來
-把畫面填充完畢再一次性顯示可以去除閃爍問題
+繪製位圖：display.drawBitmap(self, Image_fb, x, y)
+顯示控制：
+更新顯示：display.show()
+清除顯示：display.fill(0) 然後 display.show()
+調整對比度：display.contrast(contrast_value)
+螢幕翻轉：display.rotate(flag)
+反轉顯示：display.invert(invert_flag)
+電源管理：
+開啟顯示：display.poweron()
+關閉顯示：display.poweroff()
+睡眠模式：display.sleep(sleep_flag)
+注意：
+顏色使用 1 表示點亮，0 表示熄滅。
+座標系統從左上角 (0,0) 開始。
+該物件已經使用 Double Buffer 呼叫 display.show() 將緩衝顯示出來。
+把畫面填充完畢再一次性顯示可以去除閃爍問題。
 
-self.mpu使用說明
+PicoWear.mpu使用說明
+Mpu6050_mahony.py
 使用 MPU6050 陀螺儀和加速度計感測器設計的。
 它可以進行平躺Roll Pitch ，站立時傾斜角度的計算，並透過Mahony濾波算法來實現更準確的姿態估計。
-務必每秒一百次計算才能取得穩定角度請使用Timer進行呼叫
-與主程式分開自己單獨一個Timer
+務必每秒100計算才能取得穩定角度,請單獨一個Timer呼叫計算
 mpu.update_mahony()  #如果要取得roll pitch
-或是
-mpu.calculate_tilt_angles() #如果要Get_tilt_angles
+mpu.calculate_tilt_angle() #如果要站立Get_tilt_angle
 該類別已使用雙緩衝去除角度計算競爭
 注意
-Timer中斷頻率高請在主程式判斷KeyboardInterrupt並關閉其他Timer
+Timer中斷頻率高,請在主程式判斷KeyboardInterrupt時使用for timer in timers: timer.deinit(),關閉所有Timer
 主要方法
 __init__(self, i2c, addr=0x68)
     初始化 MPU6050 類別。
@@ -76,42 +86,35 @@ read_gyro(self)
     讀取陀螺儀數據，從 MPU6050 的陀螺儀傳感器獲取數據。返回的陀螺儀數據經過轉換為度每秒（deg/s），描述角速度。
 read_accel_raw(self)
     直接讀取原始加速度數據。
-calculate_tilt_angles_with_filter(self)
+calculate_tilt_angle(self)
     計算mpu6050站立之後的傾斜角度，使用互補濾波器來平滑角度變化，以應對快速動態變化。
-    此方法返回的角度以度（°）為單位，並會將角度維持在 -180° 到 180° 的範圍內。
-Get_tilt_angles(self)
-    取得Get_tilt_angles計算後的角度
+    務必每秒100計算才能算出穩定角度。
+    只有計算要取出角度請使用Get_tilt_angle()
+Get_tilt_angle(self)
+    取得calculate_tilt_angles計算後的tilt角度
+    此方法返回tilt角度以(度)為單位，並會將角度維持在 -180° 到 180° 的範圍內。
 calibrate_tilt(self, num_samples=100)
     校準站立時傾斜角度，主要用於設置加速度計的偏移值。
 
-
-PicoWear示例：
-from Pico_Wear import PicoWear  # 引入 PicoWear 類別
-# 创建 PicoWear 对象
-pico = ()
-
-# 注册按钮回调函数
-def on_button_press():
-    print("按钮被按下")
-pico.register_button_callback(on_button_press)
-
-# 发送 LINE Notify 消息
-pico.line_notify_message("your_line_token", "Hello from PicoWear!")
-
-# 连接 MQTT 服务器
-mqtt_client = pico.mqtt_connect("mqtt_broker_address")
-if mqtt_client:
-    mqtt_client.publish("topic", "message")
+mpu與display合作時主程式架構
+timer = machine.Timer()
+timer.init(period=10, mode=machine.Timer.PERIODIC, callback=update_tilt)
+try:
+    while True:
+        angle = mpu 取得角度
+        update_display(angle)
+        utime.sleep(0.05)
+except KeyboardInterrupt:
+    timer.deinit()
+    print("程序已停止")
     
-    
-    
-    
+請幫我寫出:
 
-請幫我寫出 
+
 使用Timer和MPU
 抓取mpu的角度，控制螢幕上個小圓球
 有一條線於螢幕中央連線至小圓球中心
-使用Roll角度-15度～15度控制方塊的Ｘ軸移動
-使用Pitch角度-15度～15度控制方塊的Y軸移動
+使用Roll角度-60度～60度控制方塊的Ｘ軸移動
+使用Pitch角度-60度～60度控制方塊的Y軸移動
 
 

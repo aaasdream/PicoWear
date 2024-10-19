@@ -1,48 +1,61 @@
-Pico_Wear.py
-PicoWear 類別于控制 Pico Wear 硬件，主要函数说明如下：
-__init__(): 初始化 PicoWear 对象，设置定时器、LED、显示屏、MPU6050 传感器、Wi-Fi、RTC 和 MQTT 客户端。
-detect_button(timer, callback=None): 检测按钮状态，若检测到按钮被按下，调用指定的回调函数。
-register_button_callback(callback): 注册按钮Click的回调函数,callback 是一個沒有參數的函數
-line_notify_message(token, msg): 使用 LINE Notify API 发送消息。参数 token 为授权令牌，msg 为发送的消息内容。
-mqtt_connect(mqtt_broker): 连接到指定的 MQTT 服务器。参数 mqtt_broker 为服务器地址，成功连接后返回 MQTT 客户端对象。
-通过使用 PicoWear 类，您可以：
-初始化并控制 Pico Wear 的硬件组件。
-注册并处理按钮按下事件。
-发送消息到 LINE Notify 服务。
-连接到 MQTT 服务器进行消息通信。
-PicoWear示例：
+Pico_Wear.py 使用說明
+
+PicoWear 類別用於控制 Pico Wear 硬體，透過這個類別，您可以：
+  1. 初始化並控制 Pico Wear 的硬體元件。
+  2. 註冊並處理按鈕按下事件。
+  3. 傳送訊息到 LINE Notify 服務。
+  4. 連接到 MQTT 伺服器進行訊息通訊。
+
+主要函數說明如下：
+__init__(): 初始化 PicoWear 物件，設置計時器、LED、顯示螢幕、MPU6050 感測器、Wi-Fi、RTC 和 MQTT 客戶端。
+init_hardware(button_callback=None): 初始化所有硬體元件，包括 OLED 顯示螢幕、MPU6050 傾斜感測器、Wi-Fi、RTC 和 LED。可選參數 button_callback 用於設置按鈕按下時的回呼函數。
+detect_button(timer, callback=None): 偵測按鈕狀態，若偵測到按鈕被按下，呼叫指定的回呼函數。
+register_button_callback(callback): 註冊按鈕按下時的回呼函數，替換之前的計時器回呼。
+line_notify_message(token, msg): 使用 LINE Notify API 傳送訊息。參數 token 為授權令牌，msg 為傳送的訊息內容。
+mqtt_connect(mqtt_broker): 連接到指定的 MQTT 伺服器。參數 mqtt_broker 為伺服器位址，成功連接後返回 MQTT 客戶端物件。 
+
+PicoWear 示例：
 from Pico_Wear import PicoWear  # 引入 PicoWear 類別
-# 创建 PicoWear 对象
-pico = ()
-# 注册按钮回调函数
-def on_button_click():
-    print("Button Click")
-pico.register_button_callback(on_button_click)#PicoWear只有一個按鈕
+# 創建 PicoWear 物件
+pico_wear = PicoWear()
 
-PicoWear.display使用說明
-這是Micropython中一個OLED的驅動
-他的大小為128x128的單色螢幕
-基本繪圖:
-繼承framebuf.FrameBuffer 除了原本framebuf.FrameBuffer的函數還包含如下
-畫點: display.pixel(x, y, color)
-畫線: display.line(x1, y1, x2, y2, color)
-畫矩形: display.draw_rectangle(x, y, width, height, color)
-填充矩形: display.fill_rectangle(x, y, width, height, color)
-畫圓: display.draw_circle(x, y, radius, color)
-填充圓: display.fill_circle(x, y, radius, color)
-畫三角形: display.draw_triangle(x0, y0, x1, y1, x2, y2, color)
-填充三角形: display.fill_triangle(x0, y0, x1, y1, x2, y2, color)
-顯示文字: display.text("Hello", x, y, color)
+# 註冊按鈕回呼函數範例
+def on_button_press():
+    print("按鈕被按下")
+pico.register_button_callback(on_button_press)#PicoWear只有一個按鈕CallBack沒有回傳值
+
+PicoWear.display (OLED) 的使用說明：
+這是 Micropython 中一個 OLED 的驅動，解析度為 128x128 的單色螢幕，每行最多只能顯示 16 個字，超出的話要換行顯示，只能顯示英文字。
+基本繪圖：
+繼承 framebuf.FrameBuffer 除了原本 framebuf.FrameBuffer 的函數還包含如下：
+畫點：display.pixel(x, y, color)
+畫線：display.line(x1, y1, x2, y2, color)
+畫矩形：display.draw_rectangle(x, y, width, height, color)
+填充矩形：display.fill_rectangle(x, y, width, height, color)
+畫圓：display.draw_circle(x, y, radius, color)
+填充圓：display.fill_circle(x, y, radius, color)
+畫三角形：display.draw_triangle(x0, y0, x1, y1, x2, y2, color)
+填充三角形：display.fill_triangle(x0, y0, x1, y1, x2, y2, color)
+文字顯示：
+顯示文字：display.text("Hello", x, y, color)
+位圖顯示：
 讀取圖片：Image_fb = display.read_bmp_mono('圖片路徑名稱')
-繪製位圖: display.drawBitmap(self,Image_fb, x, y )
-更新顯示: display.show()
-清除顯示: display.fill(0) 然後 display.show()
-
-注意:
-顏色使用1表示點亮，0表示熄滅
-座標系統從左上角(0,0)開始
-該物件已經使用Double Buffer調用display.show()將緩衝顯示出來
-把畫面填充完畢再一次性顯示可以去除閃爍問題
+繪製位圖：display.drawBitmap(self, Image_fb, x, y)
+顯示控制：
+更新顯示：display.show()
+清除顯示：display.fill(0) 然後 display.show()
+調整對比度：display.contrast(contrast_value)
+螢幕翻轉：display.rotate(flag)
+反轉顯示：display.invert(invert_flag)
+電源管理：
+開啟顯示：display.poweron()
+關閉顯示：display.poweroff()
+睡眠模式：display.sleep(sleep_flag)
+注意：
+顏色使用 1 表示點亮，0 表示熄滅。
+座標系統從左上角 (0,0) 開始。
+該物件已經使用 Double Buffer 呼叫 display.show() 將緩衝顯示出來。
+把畫面填充完畢再一次性顯示可以去除閃爍問題。
 
 PicoWear.mpu使用說明
 Mpu6050_mahony.py
@@ -83,13 +96,29 @@ Get_tilt_angle(self)
 calibrate_tilt(self, num_samples=100)
     校準站立時傾斜角度，主要用於設置加速度計的偏移值。
 
+mpu與display合作時主程式架構
+timer = machine.Timer()
+timer.init(period=10, mode=machine.Timer.PERIODIC, callback=update_tilt)
+try:
+    while True:
+        angle = mpu 取得角度
+        update_display(angle)
+        utime.sleep(0.02)
+except KeyboardInterrupt:
+    timer.deinit()
+    print("程序已停止")
+    
+請幫我寫出:
+
 
 幫我撰寫
 一個站立的量角器
 使用MPU抓取tilt角度
-先畫一個圓形，角度由0度寫到180度然後再由180度回到0度
-然後再畫一條線是現在的tile角度
-螢幕的中間偏左顯示現在的tilt角度
+先畫一個圓形，畫上刻度線再寫上刻度角度於圓內
+角度由0度寫到180度然後再由-180度回到-0度
+0度在螢幕上方,順時鐘是正的,你時鐘是負的
+然後畫一條線是現在的tile角度
+螢幕的中間顯示現在的tilt角度
 按下按鈕的時候執行tile校正
 
 請先一步一步分析再進行程式撰寫

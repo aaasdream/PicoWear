@@ -1,54 +1,66 @@
-Pico_Wear.py
-PicoWear 類別于控制 Pico Wear 硬件，主要函数说明如下：
-__init__(): 初始化 PicoWear 对象，设置定时器、LED、显示屏、MPU6050 传感器、Wi-Fi、RTC 和 MQTT 客户端。
-init_hardware(button_callback=None): 初始化所有硬件组件，包括 OLED 显示屏、MPU6050 倾斜传感器、Wi-Fi、RTC 和 LED。可选参数 button_callback 用于设置按钮按下时的回调函数。
-detect_button(timer, callback=None): 检测按钮状态，若检测到按钮被按下，调用指定的回调函数。
-register_button_callback(callback): 注册按钮Click的回调函数，替换之前的定时器回调
-line_notify_message(token, msg): 使用 LINE Notify API 发送消息。参数 token 为授权令牌，msg 为发送的消息内容。
-mqtt_connect(mqtt_broker): 连接到指定的 MQTT 服务器。参数 mqtt_broker 为服务器地址，成功连接后返回 MQTT 客户端对象。
-通过使用 PicoWear 类，您可以：
-初始化并控制 Pico Wear 的硬件组件。
-注册并处理按钮按下事件。
-发送消息到 LINE Notify 服务。
-连接到 MQTT 服务器进行消息通信。
-PicoWear示例：
+Pico_Wear.py 使用說明
+
+PicoWear 類別用於控制 Pico Wear 硬體，透過這個類別，您可以：
+  1. 初始化並控制 Pico Wear 的硬體元件。
+  2. 註冊並處理按鈕按下事件。
+  3. 傳送訊息到 LINE Notify 服務。
+  4. 連接到 MQTT 伺服器進行訊息通訊。
+
+主要函數說明如下：
+__init__(): 初始化 PicoWear 物件，設置計時器、LED、顯示螢幕、MPU6050 感測器、Wi-Fi、RTC 和 MQTT 客戶端。
+init_hardware(button_callback=None): 初始化所有硬體元件，包括 OLED 顯示螢幕、MPU6050 傾斜感測器、Wi-Fi、RTC 和 LED。可選參數 button_callback 用於設置按鈕按下時的回呼函數。
+detect_button(timer, callback=None): 偵測按鈕狀態，若偵測到按鈕被按下，呼叫指定的回呼函數。
+register_button_callback(callback): 註冊按鈕按下時的回呼函數，替換之前的計時器回呼。
+line_notify_message(token, msg): 使用 LINE Notify API 傳送訊息。參數 token 為授權令牌，msg 為傳送的訊息內容。
+mqtt_connect(mqtt_broker): 連接到指定的 MQTT 伺服器。參數 mqtt_broker 為伺服器位址，成功連接後返回 MQTT 客戶端物件。 
+
+PicoWear 示例：
 from Pico_Wear import PicoWear  # 引入 PicoWear 類別
-# 创建 PicoWear 对象
-pico = ()
-# 注册按钮回调函数
-def on_button_click():
-    print("Button Click")
-pico.register_button_callback(on_button_click)#PicoWear只有一個按鈕
+# 創建 PicoWear 物件
+pico_wear = PicoWear()
 
-PicoWear.display使用說明
-這是Micropython中一個OLED的驅動
-他的大小為128x128的單色螢幕
-基本繪圖:
-繼承framebuf.FrameBuffer 除了原本framebuf.FrameBuffer的函數還包含如下
-畫點: display.pixel(x, y, color)
-畫線: display.line(x1, y1, x2, y2, color)
-畫矩形: display.draw_rectangle(x, y, width, height, color)
-填充矩形: display.fill_rectangle(x, y, width, height, color)
-畫圓: display.draw_circle(x, y, radius, color)
-填充圓: display.fill_circle(x, y, radius, color)
-畫三角形: display.draw_triangle(x0, y0, x1, y1, x2, y2, color)
-填充三角形: display.fill_triangle(x0, y0, x1, y1, x2, y2, color)
-顯示文字: display.text("Hello", x, y, color)
+# 註冊按鈕回呼函數範例
+def on_button_press():
+    print("按鈕被按下")
+pico.register_button_callback(on_button_press)#PicoWear只有一個按鈕CallBack沒有回傳值
+
+PicoWear.display (OLED) 的使用說明：
+這是 Micropython 中一個 OLED 的驅動，解析度為 128x128 的單色螢幕，每行最多只能顯示 16 個字，超出的話要換行顯示，只能顯示英文字。
+基本繪圖：
+繼承 framebuf.FrameBuffer 除了原本 framebuf.FrameBuffer 的函數還包含如下：
+畫點：display.pixel(x, y, color)
+畫線：display.line(x1, y1, x2, y2, color)
+畫矩形：display.draw_rectangle(x, y, width, height, color)
+填充矩形：display.fill_rectangle(x, y, width, height, color)
+畫圓：display.draw_circle(x, y, radius, color)
+填充圓：display.fill_circle(x, y, radius, color)
+畫三角形：display.draw_triangle(x0, y0, x1, y1, x2, y2, color)
+填充三角形：display.fill_triangle(x0, y0, x1, y1, x2, y2, color)
+文字顯示：
+顯示文字：display.text("Hello", x, y, color)
+位圖顯示：
 讀取圖片：Image_fb = display.read_bmp_mono('圖片路徑名稱')
-繪製位圖: display.drawBitmap(self,Image_fb, x, y )
-更新顯示: display.show()
-清除顯示: display.fill(0) 然後 display.show()
-
-注意:
-顏色使用1表示點亮，0表示熄滅
-座標系統從左上角(0,0)開始
-該物件已經使用Double Buffer調用display.show()將緩衝顯示出來
-把畫面填充完畢再一次性顯示可以去除閃爍問題
+繪製位圖：display.drawBitmap(self, Image_fb, x, y)
+顯示控制：
+更新顯示：display.show()
+清除顯示：display.fill(0) 然後 display.show()
+調整對比度：display.contrast(contrast_value)
+螢幕翻轉：display.rotate(flag)
+反轉顯示：display.invert(invert_flag)
+電源管理：
+開啟顯示：display.poweron()
+關閉顯示：display.poweroff()
+睡眠模式：display.sleep(sleep_flag)
+注意：
+顏色使用 1 表示點亮，0 表示熄滅。
+座標系統從左上角 (0,0) 開始。
+該物件已經使用 Double Buffer 呼叫 display.show() 將緩衝顯示出來。
+把畫面填充完畢再一次性顯示可以去除閃爍問題。
 
 self.mpu使用說明
 使用 MPU6050 陀螺儀和加速度計感測器設計的。
 它可以進行平躺Roll Pitch ，站立時傾斜角度的計算，並透過Mahony濾波算法來實現更準確的姿態估計。
-務必每秒100計算才能取得穩定角度請主程式分開自己單獨一個Timer呼叫計算
+務必每秒100計算才能取得穩定角度請主程式分開自己單獨一個Timer呼叫計算需要引入from machine import Timer
 mpu.update_mahony()  #如果要取得roll pitch
 或是
 mpu.calculate_tilt_angles() #如果要Get_tilt_angles
@@ -84,11 +96,13 @@ calibrate_tilt(self, num_samples=100)
 
 
 
-    
+請幫我寫出:
+
+
 
 幫我撰寫
 製作一個打磚塊的遊戲
-抓取mpu的角度，Roll角度-15~15度控制打擊棒
+抓取mpu的角度，Roll角度-15~15度對應到打擊棒X座標
 左上角顯示分數，球掉到底部遊戲Game Over
 Game Over時 顯示Game Over與分數
 點擊按鈕重新開始新的遊戲
@@ -96,3 +110,9 @@ Game Over時 顯示Game Over與分數
 按下按鈕重新開始新的遊戲
 
 請先一步一步分析再進行程式撰寫
+
+
+
+
+
+
